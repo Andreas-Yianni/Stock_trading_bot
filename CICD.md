@@ -67,4 +67,12 @@ Python 3.14 venv; `winloop` Windows-only, `uvloop` elsewhere, verified all pins 
 cp314 wheels), `requirements-dev.txt` (pinned pytest/pytest-cov/ruff + deps),
 `pyproject.toml` (ruff `E9`+`F` only – passes; a stricter E/W/I/B/UP set would report
 82 style issues, `ruff format` would touch 26 files – both left for later).
-Next: Phase 2 (tests).
+Phase 2 – done on branch `ci-cd` (2026-10-21): `tests/` with 94 pytest tests (~3 s) for
+indicators, levels, engine (scoring, filters, `_build_plan`), portfolio (`round_qty`, `ticket`,
+open/close + balance), broker (Alpaca sizing, paper-only guards, `health()`, `pause`) and journal
+(`simulate`, `replay`, `record`). `tests/conftest.py` isolates every test: temp `config.yaml`
+(`config.ROOT`), temp journal DB and broker state files, fake `PK…` keys, sockets blocked.
+Coverage 27% overall (indicators/levels 100%, engine/journal 68%, portfolio 52%, broker 49%).
+Known: `_conn()` in journal/portfolio never closes SQLite connections → `ResourceWarning`s in
+pytest output (harmless, not fixed: bot code unchanged).
+Next: Phase 3 (CI workflow).

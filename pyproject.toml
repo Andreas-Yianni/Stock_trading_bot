@@ -18,6 +18,10 @@ quote-style = "preserve"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+filterwarnings = [
+    # third-party: vaderSentiment uses codecs.open (deprecated in Python 3.14)
+    "ignore:codecs.open:DeprecationWarning:vaderSentiment",
+]
 
 [tool.coverage.run]
 source = ["tradebot"]
