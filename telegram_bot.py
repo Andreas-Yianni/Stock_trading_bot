@@ -8,6 +8,7 @@ import json
 import logging
 import time
 from datetime import time as dtime, timezone
+from logging.handlers import RotatingFileHandler
 
 import httpx
 import pandas as pd
@@ -19,7 +20,11 @@ from telegram.request import HTTPXRequest
 from tradebot import autoscan, backtest, broker, chart, engine, events, journal, market, news, portfolio, report, selfcheck
 from tradebot.config import DATA_DIR, DISCLAIMER, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, load_config, save_config
 
-logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO)
+# Console + data/bot.log (rotated: 5 files × 2 MB), so a crash/stop can be investigated afterwards.
+logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO,
+                    handlers=[logging.StreamHandler(),
+                              RotatingFileHandler(DATA_DIR / "bot.log", maxBytes=2_000_000, backupCount=5,
+                                                  encoding="utf-8")])
 logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("bot")
 
