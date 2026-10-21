@@ -96,4 +96,9 @@ dashboard health OK and AppTest renders with no exceptions.
 Notes for phase 6: never run the Docker bot and `start_bot.bat` at the same time (same Telegram token →
 polling conflict, duplicate scans); on the server `config.yaml` and `data/` must exist before
 `docker compose up` (a missing bind-mounted file becomes a directory) and be writable by uid 1000.
-Next: Phase 5 (build & push to ghcr.io).
+Phase 5 – on branch `ci-cd` (2026-10-21): job `docker` in `ci.yml`, `needs: test` (runs only if lint +
+tests pass). On pull requests to `main` it only builds the image (Dockerfile check); on push to `main` it
+also logs in with the built-in `GITHUB_TOKEN` (`packages: write`, no extra secret) and pushes
+`ghcr.io/andreas-yianni/stock_trading_bot:<full commit sha>` and `:latest`. Buildx with GitHub Actions
+layer cache. The package is private (like the repo): the server will need a read-only token to pull.
+Next: merge via PR, confirm the package appears under the repo's Packages, then Phase 6 (CD to Hetzner).
