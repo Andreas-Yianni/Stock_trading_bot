@@ -1,0 +1,12 @@
+# Development / CI tools (not needed to run the bot).
+# Install with:  pip install -r requirements.lock -r requirements-dev.txt
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.17.1
+
+# Their dependencies, pinned for reproducible CI
+coverage==7.16.2
+iniconfig==2.3.1
+pluggy==1.7.0
+Pygments==2.21.0
+colorama==0.4.6; sys_platform == "win32"
