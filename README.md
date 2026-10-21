@@ -1,5 +1,7 @@
 # 📈 Trading Analyst Bot
 
+[![CI](https://github.com/Andreas-Yianni/Stock_trading_bot/actions/workflows/ci.yml/badge.svg)](https://github.com/Andreas-Yianni/Stock_trading_bot/actions/workflows/ci.yml)
+
 Αναλύει μετοχές και crypto (τεχνική ανάλυση + ειδήσεις) και προτείνει **ενδεικτικά** σημεία εισόδου, stop loss, take profit και μέγεθος θέσης. **Δεν κάνει trades.**
 
 > ⚠️ Καμία ανάλυση δεν προβλέπει την αγορά με σιγουριά. Χρησιμοποίησέ το για paper trading πρώτα.
