@@ -1,0 +1,63 @@
+# Continuous integration: lint + tests on every push and pull request.
+# Runs on a fresh GitHub-hosted Ubuntu machine; no secrets are needed because
+# the tests mock all network access and use temp files instead of data/ and config.yaml.
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:        # "Run workflow" button in the Actions tab
+
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels the older, still-running check.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint & tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements.lock
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.lock -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check --output-format=github .
+
+      - name: Tests (pytest + coverage)
+        run: pytest --cov --cov-report=term-missing --cov-report=xml
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f .coverage ]; then
+            echo '### Coverage' >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            coverage report >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore

@@ -61,4 +61,26 @@ Later direction (do NOT start until this plan is done): split into services
   (except the Hetzner server I already chose).
 
 ## Current status
-Phase 0 – git repo initialized, first commit done, not yet pushed to GitHub.
+Phase 0 – git repo initialized and pushed (2026-10-21) to the private repo
+github.com/Andreas-Yianni/Stock_trading_bot (default branch `main`; work on `ci-cd`).
+Phase 1 – done on branch `ci-cd` (2026-10-21): `requirements.lock` (pip freeze of the
+Python 3.14 venv; `winloop` Windows-only, `uvloop` elsewhere, verified all pins have Linux
+cp314 wheels), `requirements-dev.txt` (pinned pytest/pytest-cov/ruff + deps),
+`pyproject.toml` (ruff `E9`+`F` only – passes; a stricter E/W/I/B/UP set would report
+82 style issues, `ruff format` would touch 26 files – both left for later).
+Phase 2 – done on branch `ci-cd` (2026-10-21): `tests/` with 94 pytest tests (~3 s) for
+indicators, levels, engine (scoring, filters, `_build_plan`), portfolio (`round_qty`, `ticket`,
+open/close + balance), broker (Alpaca sizing, paper-only guards, `health()`, `pause`) and journal
+(`simulate`, `replay`, `record`). `tests/conftest.py` isolates every test: temp `config.yaml`
+(`config.ROOT`), temp journal DB and broker state files, fake `PK…` keys, sockets blocked.
+Coverage 27% overall (indicators/levels 100%, engine/journal 68%, portfolio 52%, broker 49%).
+Fixed afterwards (user-approved): `_conn()` in journal/portfolio now closes the SQLite connection
+(context manager: commit/rollback + close) → no more `ResourceWarning`s.
+Also (2026-10-21): `telegram_bot.py` logs to `data/bot.log` too (rotating 5 × 2 MB), because the bot
+had stopped unnoticed and the console log was lost.
+Phase 3 – done on branch `ci-cd` (2026-10-21): `.github/workflows/ci.yml` – on every push, PRs to
+`main` and manual dispatch: ubuntu-latest, Python 3.14 with pip cache, `requirements.lock` +
+`requirements-dev.txt`, `ruff check`, `pytest --cov` (coverage table in the run summary,
+`coverage.xml` artifact). No secrets needed. First run green. CI badge in README (visible only to
+the owner while the repo is private).
+Next: merge `ci-cd` → `main` via Pull Request, then Phase 4 (Docker).

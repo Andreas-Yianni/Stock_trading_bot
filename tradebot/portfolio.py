@@ -12,6 +12,7 @@
 """
 import math
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -22,7 +23,18 @@ from .config import DATA_DIR, load_config, save_config
 DB = DATA_DIR / "journal.db"
 
 
+@contextmanager
 def _conn():
+    """`with _conn() as c:` κάνει commit (rollback σε λάθος) και κλείνει τη σύνδεση στο τέλος."""
+    c = _open()
+    try:
+        with c:
+            yield c
+    finally:
+        c.close()
+
+
+def _open():
     c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
     c.execute("""

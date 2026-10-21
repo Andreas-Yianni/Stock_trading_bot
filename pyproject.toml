@@ -1,0 +1,27 @@
+# Tool configuration only - the bot is not packaged/installed, it runs from this folder.
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+extend-exclude = ["data", ".venv"]
+
+[tool.ruff.lint]
+# Lenient start: only real errors (pyflakes F + syntax/IO errors E9).
+# Style rules (E, W, I, B, UP...) can be added gradually in later commits.
+select = ["E9", "F"]
+ignore = []
+
+[tool.ruff.format]
+# `ruff format` is NOT run in CI yet, to avoid reformatting the whole codebase at once.
+quote-style = "preserve"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = [
+    # third-party: vaderSentiment uses codecs.open (deprecated in Python 3.14)
+    "ignore:codecs.open:DeprecationWarning:vaderSentiment",
+]
+
+[tool.coverage.run]
+source = ["tradebot"]
