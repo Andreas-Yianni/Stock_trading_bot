@@ -62,3 +62,9 @@ Later direction (do NOT start until this plan is done): split into services
 
 ## Current status
 Phase 0 – git repo initialized, first commit done, not yet pushed to GitHub.
+Phase 1 – done on branch `ci-cd` (2026-10-21): `requirements.lock` (pip freeze of the
+Python 3.14 venv; `winloop` Windows-only, `uvloop` elsewhere, verified all pins have Linux
+cp314 wheels), `requirements-dev.txt` (pinned pytest/pytest-cov/ruff + deps),
+`pyproject.toml` (ruff `E9`+`F` only – passes; a stricter E/W/I/B/UP set would report
+82 style issues, `ruff format` would touch 26 files – both left for later).
+Next: Phase 2 (tests).
