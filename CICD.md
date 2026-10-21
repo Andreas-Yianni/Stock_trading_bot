@@ -83,4 +83,17 @@ Phase 3 – done on branch `ci-cd` (2026-10-21): `.github/workflows/ci.yml` – 
 `requirements-dev.txt`, `ruff check`, `pytest --cov` (coverage table in the run summary,
 `coverage.xml` artifact). No secrets needed. First run green. CI badge in README (visible only to
 the owner while the repo is private).
-Next: merge `ci-cd` → `main` via Pull Request, then Phase 4 (Docker).
+Merged to `main` via PR #1.
+Phase 4 – done on branch `ci-cd` (2026-10-21): `Dockerfile` (python:3.14-slim, deps layer from
+`requirements.lock`, non-root user `bot` uid 1000, only `tradebot/`, the 3 entry points and a default
+`config.yaml` copied; image ≈ 274 MB compressed / 1.2 GB on disk), `.dockerignore` (no .env, data,
+tests, research, docs), `docker-compose.yml` (`bot` + `dashboard` from the same image
+`ghcr.io/andreas-yianni/stock_trading_bot:latest`, restart unless-stopped, `env_file: .env`, volumes
+`./data` and `./config.yaml`, dashboard on 127.0.0.1:8501 only, no depends_on so the dashboard can run
+alone). Verified on Docker Desktop with scratch copies of data/config (the real bot was running): runs as
+uid 1000, no .env in the image, bot exits cleanly without token, `cli.py AAPL 1d` works on Linux,
+dashboard health OK and AppTest renders with no exceptions.
+Notes for phase 6: never run the Docker bot and `start_bot.bat` at the same time (same Telegram token →
+polling conflict, duplicate scans); on the server `config.yaml` and `data/` must exist before
+`docker compose up` (a missing bind-mounted file becomes a directory) and be writable by uid 1000.
+Next: Phase 5 (build & push to ghcr.io).

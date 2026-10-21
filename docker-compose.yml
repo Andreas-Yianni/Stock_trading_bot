@@ -1,0 +1,30 @@
+# Two services from the same image.
+#   docker compose up -d --build     build + start both in the background
+#   docker compose logs -f bot       follow the bot's log
+#   docker compose down              stop both
+# Run only ONE bot at a time (here OR start_bot.bat): two bots with the same Telegram token
+# conflict, and both would run the morning scan and the Alpaca jobs.
+services:
+  bot:
+    build: .
+    image: ghcr.io/andreas-yianni/stock_trading_bot:latest
+    command: ["python", "telegram_bot.py"]
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config.yaml   # rewritten at runtime (/watch, /balance, closed trades)
+
+  dashboard:
+    build: .                             # same image as the bot (second build is fully cached)
+    image: ghcr.io/andreas-yianni/stock_trading_bot:latest
+    command: ["streamlit", "run", "dashboard.py",
+              "--server.address=0.0.0.0", "--server.port=8501",
+              "--server.headless=true", "--browser.gatherUsageStats=false"]
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8501:8501"            # local only: the dashboard can edit config.yaml
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config.yaml
