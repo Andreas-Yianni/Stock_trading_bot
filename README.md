@@ -48,6 +48,18 @@ copy .env.example .env
 
 **Πιο εύκολα:** διπλό κλικ στο `start_bot.bat` (Telegram bot) ή στο `start_dashboard.bat` (dashboard).
 
+## 4) Με Docker (εναλλακτικά, π.χ. σε server)
+
+Ένα image για δύο services (`bot` και `dashboard`). Τα `.env`, `data/` και `config.yaml` δεν μπαίνουν στο image: διαβάζονται από τον φάκελο.
+
+```powershell
+docker compose up -d --build     # φτιάχνει το image και ξεκινάει bot + dashboard
+docker compose logs -f bot       # τι κάνει το bot
+docker compose down              # σταμάτημα
+```
+
+Dashboard: http://localhost:8501 (μόνο από τον ίδιο υπολογιστή). **Μόνο ένα bot κάθε φορά**: όχι Docker και `start_bot.bat` μαζί (ίδιο Telegram token, διπλά scans/trades).
+
 ## Ρυθμίσεις: `config.yaml`
 
 - `account.balance`: το κεφάλαιό σου

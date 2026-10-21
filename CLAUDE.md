@@ -24,6 +24,7 @@ Windows, Python 3.14, venv at `.venv`. Use `PYTHONIOENCODING=utf-8` when running
 ./.venv/Scripts/python cli.py --selfcheck    # self-check: current rules vs candidates vs SPY (watchlist, ~3 min)
 ./.venv/Scripts/python research/honest_test.py   # point-in-time S&P 500 test of the rules (~10 min; first run ~45)
 ./.venv/Scripts/streamlit run dashboard.py   # http://localhost:8501
+docker compose up -d --build                 # bot + dashboard in Docker (never alongside start_bot.bat)
 ./.venv/Scripts/python telegram_bot.py       # needs TELEGRAM_BOT_TOKEN in .env
 ```
 
