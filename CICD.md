@@ -73,6 +73,6 @@ open/close + balance), broker (Alpaca sizing, paper-only guards, `health()`, `pa
 (`simulate`, `replay`, `record`). `tests/conftest.py` isolates every test: temp `config.yaml`
 (`config.ROOT`), temp journal DB and broker state files, fake `PK…` keys, sockets blocked.
 Coverage 27% overall (indicators/levels 100%, engine/journal 68%, portfolio 52%, broker 49%).
-Known: `_conn()` in journal/portfolio never closes SQLite connections → `ResourceWarning`s in
-pytest output (harmless, not fixed: bot code unchanged).
+Fixed afterwards (user-approved): `_conn()` in journal/portfolio now closes the SQLite connection
+(context manager: commit/rollback + close) → no more `ResourceWarning`s.
 Next: Phase 3 (CI workflow).

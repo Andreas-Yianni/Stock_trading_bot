@@ -1,5 +1,6 @@
 """Ημερολόγιο σημάτων (paper trading): κρατάει κάθε πρόταση και ελέγχει αργότερα αν πέτυχε."""
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from . import indicators, market
@@ -9,7 +10,18 @@ from .engine import Analysis
 DB = DATA_DIR / "journal.db"
 
 
+@contextmanager
 def _conn():
+    """`with _conn() as c:` κάνει commit (rollback σε λάθος) και κλείνει τη σύνδεση στο τέλος."""
+    c = _open()
+    try:
+        with c:
+            yield c
+    finally:
+        c.close()
+
+
+def _open():
     c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
     c.execute("""
