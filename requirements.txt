@@ -1,0 +1,14 @@
+pandas>=2.2
+numpy>=2.0
+yfinance>=0.2.50
+ccxt>=4.4
+feedparser>=6.0
+vaderSentiment>=3.3.2
+requests>=2.32
+python-dotenv>=1.0
+PyYAML>=6.0
+python-telegram-bot[job-queue]>=21.0
+matplotlib>=3.9
+mplfinance>=0.12.10b0
+streamlit>=1.40
+plotly>=5.24

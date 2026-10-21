@@ -1,0 +1,7 @@
+# Normalize line endings in the repo (LF), let each OS check out its own
+* text=auto
+# Windows batch files must stay CRLF
+*.bat text eol=crlf
+*.pkl binary
+*.db binary
+*.png binary

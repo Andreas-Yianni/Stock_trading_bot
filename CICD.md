@@ -1,0 +1,64 @@
+# CI/CD plan for the trading bot (portfolio project)
+
+Goal: show DevOps skills on this real codebase. Every push to GitHub runs lint + tests
+automatically; images are built and pushed to a registry; deploys to the cloud server happen
+automatically from `main`. The bot's behaviour must not change because of this work.
+
+Later direction (do NOT start until this plan is done): split into services
+(market data, signals/engine, broker/execution, notifications) with Docker Compose.
+
+## What the app actually is (read CLAUDE.md for details)
+- `telegram_bot.py` – long-running worker (polling + scheduled jobs: morning scan,
+  check_trades every 10 min, weekly/monthly jobs). Not a web API.
+- `dashboard.py` – Streamlit dashboard (port 8501). It can write `config.yaml`, so it must
+  NOT be exposed publicly without protection.
+- `tradebot/` – engine, indicators, levels, backtest, journal (SQLite), portfolio, broker
+  (Alpaca PAPER via `requests`), autoscan, selfcheck, etc.
+- `cli.py`, `research/` (research tools, not part of the running bot).
+- State: `data/` (~1 GB, git-ignored) and `config.yaml` (rewritten at runtime).
+- Secrets in `.env` only (Telegram token/chat id, Alpaca paper keys).
+- Cloud target: Hetzner VPS (Ubuntu 24.04) – see ΠΟΥ_ΕΜΕΙΝΑΜΕ.md; server not created yet.
+
+## About me
+- New to Docker / GitHub Actions / deployment: explain each new concept briefly once.
+- Windows + PowerShell for local commands. Talk to me in Greek; code/commits/docs in English.
+
+## Roadmap (one phase at a time – stop and let me test before the next)
+1. **Explore & deps** – summarize structure first. Add a pinned `requirements.lock`
+   (or pins) from the current working venv, plus `requirements-dev.txt`
+   (pytest, pytest-cov, ruff). Add `pyproject.toml` with a lenient ruff config
+   (don't reformat the whole codebase in one go).
+2. **Tests** – `tests/` with pytest for pure logic first: indicators, levels, engine scoring,
+   `portfolio.ticket` / sizing, `broker` sizing + `health()` circuit breaker, journal replay.
+   ALL network calls (Telegram, Alpaca, Yahoo/yfinance, ccxt, news feeds) mocked; tests use
+   small fixture DataFrames and a temp SQLite DB, never the real `data/` or `config.yaml`.
+3. **CI** – `.github/workflows/ci.yml`: on push/PR → Python 3.x, pip cache, ruff, pytest with
+   coverage. Status badge in README.
+4. **Docker** – `Dockerfile` (slim Python, non-root user) and `docker-compose.yml` with two
+   services from the same image: `bot` (python telegram_bot.py, restart: unless-stopped) and
+   `dashboard` (streamlit, bound to 127.0.0.1 only). Volumes for `data/` and `config.yaml`;
+   `.env` passed as env_file, never baked into the image. `.dockerignore`. Test locally
+   with Docker Desktop.
+5. **Build & push** – on push to `main`, only if CI passes, build the image and push to
+   GitHub Container Registry (ghcr.io), tagged with commit SHA and `latest`.
+6. **CD to Hetzner** (when the server exists) – deploy job: SSH into the server with a
+   dedicated deploy key stored as a GitHub secret, `docker compose pull && docker compose up -d`.
+   Server setup documented as a script (`deploy/setup.sh`): Docker, firewall (only SSH open),
+   non-root user. Dashboard reached via SSH tunnel, not a public port.
+7. **Hardening** – branch protection on `main` (PR + green CI), Dependabot (pip + actions),
+   healthcheck for the bot container (e.g. heartbeat file), alert on failed deploy.
+8. **Showcase** – README in English: what it does, architecture + pipeline diagram (Mermaid),
+   how to run locally / with Docker, tech stack, badges. Screenshots of the dashboard.
+
+## Rules
+- Never commit `.env`, keys, tokens or anything in `data/`.
+- Alpaca stays PAPER only (`paper-api.alpaca.markets`) – never touch that.
+- Don't change trading logic, thresholds or `config.yaml` values as part of CI/CD work.
+- `start_bot.bat` / `start_dashboard.bat` must keep working (keep them ASCII after chcp).
+- Don't move/rename modules without asking me first.
+- Work on branch `ci-cd`; small commits; merge to `main` via Pull Request.
+- If something fails, explain the cause before changing things. Free tiers only
+  (except the Hetzner server I already chose).
+
+## Current status
+Phase 0 – git repo initialized, first commit done, not yet pushed to GitHub.

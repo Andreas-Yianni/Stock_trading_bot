@@ -1,0 +1,44 @@
+account:
+  currency: USD
+  balance: 100000.0
+  risk_per_trade_pct: 1.0
+  max_position_pct: 25
+analysis:
+  default_timeframe: 1d
+  min_score_for_signal: 30
+  min_reward_risk: 1.5
+  trend_filter: false
+  exit_mode: trend
+  trend_atr: 6
+  trail_atr: 3
+  long_only: true
+crypto:
+  exchange: binance
+  quote: USDT
+watchlist:
+- AAPL
+- NVDA
+- TSLA
+- MSFT
+- AMZN
+- GOOGL
+- META
+- AMD
+- JPM
+- SPY
+backtest:
+  fee_pct: 0.1
+  max_days: 30
+broker:
+  auto_trade: true
+  universe: top100
+  risk_per_trade_pct: 0.5
+  max_position_pct: 10
+  max_positions: 10
+  max_new_per_day: 5
+  max_order_usd: 25000
+  max_day_loss_pct: 5
+alerts:
+  timeframe: 1d
+  daily_scan_utc: 06:00
+  scan_every_minutes: 60
