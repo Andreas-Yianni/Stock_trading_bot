@@ -1007,9 +1007,19 @@ def main():
         when_text = f"κάθε {minutes} λεπτά"
     app.job_queue.run_repeating(event_alerts, interval=15 * 60, first=30)
     app.job_queue.run_repeating(check_trades, interval=10 * 60, first=60)
+    app.job_queue.run_repeating(heartbeat, interval=60, first=1)
     log.info("Το bot ξεκίνησε. Σάρωση watchlist (%s) %s.", alerts["timeframe"], when_text)
     # bootstrap_retries=-1: αν το Telegram δεν απαντάει στην εκκίνηση, ξαναδοκιμάζει μέχρι να συνδεθεί
     app.run_polling(bootstrap_retries=-1)
+
+
+HEARTBEAT = DATA_DIR / "heartbeat"
+
+
+async def heartbeat(ctx: ContextTypes.DEFAULT_TYPE):
+    """Κάθε λεπτό: γράφει την ώρα στο data/heartbeat. Το healthcheck του Docker (docker-compose.yml) θεωρεί
+    το bot «κολλημένο» αν το αρχείο παλιώσει πάνω από 5 λεπτά, και το deploy/watchdog.sh το ξαναξεκινά."""
+    HEARTBEAT.write_text(str(int(time.time())), encoding="utf-8")
 
 
 def run_forever(delay: int = 30):

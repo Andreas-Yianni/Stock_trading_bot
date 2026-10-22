@@ -1,0 +1,25 @@
+# Dependabot opens pull requests when a dependency has a new version; each one runs the full CI
+# (lint, tests, Docker build) and is merged by hand, so nothing reaches the server untested.
+# Note: it updates requirements.txt / requirements-dev.txt but not requirements.lock (a pip freeze);
+# after merging a runtime update, regenerate the lock from a venv that has the new version.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: sunday
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      dev-tools:
+        patterns: ["pytest*", "ruff", "coverage", "iniconfig", "pluggy", "pygments"]
+      runtime:
+        patterns: ["*"]
