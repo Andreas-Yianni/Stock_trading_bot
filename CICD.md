@@ -112,5 +112,7 @@ to `main` only, skipped until repo variable `DEPLOY_HOST` exists; secrets `DEPLO
 `DEPLOY_KNOWN_HOSTS` = pinned host key). The deploy key is a forced command in `authorized_keys`
 (`command="/opt/tradebot/deploy.sh",restrict`): it can only deploy. Workflow no longer cancels
 in-progress runs on `main` (a deploy must not be cut off). `*.sh` forced to LF in `.gitattributes`.
-Checked with shellcheck; not yet run on a real server.
+Checked with shellcheck; not yet run on a real server. The x86 CX23 was sold out everywhere, so the
+server is an Arm64 Ampere (CAX): the docker job builds `linux/amd64,linux/arm64` (QEMU); all pinned deps have
+cp314 aarch64 wheels (checked on PyPI).
 Next: create the server, follow `deploy/README.md`, then test a deploy end to end.
