@@ -115,4 +115,9 @@ in-progress runs on `main` (a deploy must not be cut off). `*.sh` forced to LF i
 Checked with shellcheck; not yet run on a real server. The x86 CX23 was sold out everywhere, so the
 server is an Arm64 Ampere (CAX): the docker job builds `linux/amd64,linux/arm64` (QEMU); all pinned deps have
 cp314 aarch64 wheels (checked on PyPI).
-Next: create the server, follow `deploy/README.md`, then test a deploy end to end.
+Phase 6 – server live (2026-10-22): Hetzner CAX11 (Arm64, Falkenstein, `2.31.77.113`); the x86 CX23 was sold
+out everywhere. setup.sh run (fix: `/run/sshd` for `sshd -t` under socket activation), server rebooted after updates.
+Verified on the server: native arm64 build, 94 tests pass, `cli.py AAPL 1d` (Yahoo works from Hetzner), bot
+starts, Alpaca paper account reachable, dashboard health 200, password SSH refused, deploy key runs only
+`deploy.sh`. State copied (`.env`, `config.yaml`, `data/` without research; CRLF stripped). Local bot off.
+GitHub: variable `DEPLOY_HOST`, secrets `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` set; deploy also on "Run workflow" on main.
