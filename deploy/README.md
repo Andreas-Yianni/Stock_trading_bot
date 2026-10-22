@@ -48,9 +48,11 @@ and would both run the scans and the Alpaca jobs. From now on only the server bo
 ```powershell
 tar -czf $env:TEMP\tb-state.tgz --exclude=data/research .env config.yaml data
 scp -i $HOME\.ssh\tradebot_vps $env:TEMP\tb-state.tgz tradebot@SERVER:/opt/tradebot/
-ssh -i $HOME\.ssh\tradebot_vps tradebot@SERVER "cd /opt/tradebot && tar -xzf tb-state.tgz && rm tb-state.tgz && chmod 600 .env"
+ssh -i $HOME\.ssh\tradebot_vps tradebot@SERVER "cd /opt/tradebot && tar -xzf tb-state.tgz && rm tb-state.tgz && sed -i 's/\r$//' .env config.yaml && chmod 600 .env"
 del $env:TEMP\tb-state.tgz
 ```
+
+The `sed` strips Windows line endings (CRLF): a trailing `\r` would end up inside the tokens.
 
 (`data/research` is ~1 GB of research caches and is not needed by the bot.)
 
@@ -78,7 +80,7 @@ docker compose -f /opt/tradebot/docker-compose.yml logs -f bot
 | Secret | `DEPLOY_KNOWN_HOSTS` | output of `ssh-keyscan -t ed25519 SERVER` (check its fingerprint matches `ssh-keygen -lf` on the server's `/etc/ssh/ssh_host_ed25519_key.pub`) |
 
 Until `DEPLOY_HOST` exists the `deploy` job is skipped, so CI stays green.
-Test: Actions → CI → *Run workflow* on `main` (or merge a PR).
+Test: Actions → CI → *Run workflow* on `main` (or merge a PR); it builds, pushes and deploys.
 
 ## Everyday use
 

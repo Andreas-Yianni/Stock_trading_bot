@@ -88,8 +88,11 @@ PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin prohibit-password
 EOF
+# Ubuntu 24.04 starts sshd on demand (ssh.socket), so /run/sshd may not exist yet; sshd -t needs it.
+install -d -m 755 /run/sshd
 sshd -t
-systemctl reload ssh
+# With socket activation every new connection reads the new config; reload only if sshd runs as a service.
+systemctl try-reload-or-restart ssh.service
 
 echo "== firewall: only SSH open"
 ufw default deny incoming

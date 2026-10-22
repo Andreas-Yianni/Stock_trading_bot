@@ -64,7 +64,8 @@ jobs:
           if-no-files-found: ignore
 
   # Docker image: only after lint & tests pass. Pull requests to main only BUILD it (checks the
-  # Dockerfile); a push to main also PUSHES it to GitHub Container Registry as :<commit sha> and :latest.
+  # Dockerfile); a push to main (or "Run workflow" on main) also PUSHES it to GitHub Container Registry
+  # as :<commit sha> and :latest.
   docker:
     name: Docker image
     needs: test
@@ -75,7 +76,7 @@ jobs:
       contents: read
       packages: write        # push to ghcr.io with the built-in GITHUB_TOKEN (no extra secret)
     env:
-      PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      PUSH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v5
 
@@ -112,14 +113,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Continuous deployment: after the image is pushed from main, the server pulls it and restarts
+  # Continuous deployment: after the image is pushed from main (push or "Run workflow"), the server pulls it and restarts
   # (deploy/deploy.sh). Skipped until the repository VARIABLE DEPLOY_HOST is set; it also needs the
   # SECRETS DEPLOY_SSH_KEY (private deploy key) and DEPLOY_KNOWN_HOSTS (the server's host key line).
   # The deploy key can only run deploy.sh on the server (forced command, see deploy/setup.sh).
   deploy:
     name: Deploy to server
     needs: docker
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_HOST != ''
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_HOST != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
