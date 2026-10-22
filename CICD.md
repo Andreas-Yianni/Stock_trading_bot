@@ -101,4 +101,16 @@ tests pass). On pull requests to `main` it only builds the image (Dockerfile che
 also logs in with the built-in `GITHUB_TOKEN` (`packages: write`, no extra secret) and pushes
 `ghcr.io/andreas-yianni/stock_trading_bot:<full commit sha>` and `:latest`. Buildx with GitHub Actions
 layer cache. The package is private (like the repo): the server will need a read-only token to pull.
-Next: merge via PR, confirm the package appears under the repo's Packages, then Phase 6 (CD to Hetzner).
+Merged to `main` via PR #2; the `main` run pushed the image (CI + docker job green).
+Phase 6 – prepared on branch `ci-cd` (2026-10-22), server not created yet: `deploy/setup.sh` (one-time,
+as root: updates + unattended-upgrades, Docker from the official repo with rotated logs, 2 GB swap,
+user `tradebot` uid 1000 in the docker group, `/opt/tradebot`, key-only SSH, ufw with only SSH open),
+`deploy/deploy.sh` (flock, checks `.env`/`config.yaml` exist, `docker compose pull && up -d`, fails if the
+bot isn't running after 20 s, prunes old images), `deploy/README.md` (step-by-step incl. state copy,
+ghcr login with a `read:packages` token, GitHub settings). Job `deploy` in `ci.yml` (`needs: docker`, push
+to `main` only, skipped until repo variable `DEPLOY_HOST` exists; secrets `DEPLOY_SSH_KEY`,
+`DEPLOY_KNOWN_HOSTS` = pinned host key). The deploy key is a forced command in `authorized_keys`
+(`command="/opt/tradebot/deploy.sh",restrict`): it can only deploy. Workflow no longer cancels
+in-progress runs on `main` (a deploy must not be cut off). `*.sh` forced to LF in `.gitattributes`.
+Checked with shellcheck; not yet run on a real server.
+Next: create the server, follow `deploy/README.md`, then test a deploy end to end.
