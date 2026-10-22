@@ -2,6 +2,8 @@
 * text=auto
 # Windows batch files must stay CRLF
 *.bat text eol=crlf
+# Shell scripts run on the Linux server: always LF, also in the Windows checkout (they are scp'd from it)
+*.sh text eol=lf
 *.pkl binary
 *.db binary
 *.png binary

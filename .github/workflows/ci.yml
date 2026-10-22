@@ -12,10 +12,11 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same branch cancels the older, still-running check.
+# A newer push to the same branch cancels the older, still-running check - except on main,
+# where a run may be deploying and must not be cut off halfway.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:
@@ -106,3 +107,32 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Continuous deployment: after the image is pushed from main, the server pulls it and restarts
+  # (deploy/deploy.sh). Skipped until the repository VARIABLE DEPLOY_HOST is set; it also needs the
+  # SECRETS DEPLOY_SSH_KEY (private deploy key) and DEPLOY_KNOWN_HOSTS (the server's host key line).
+  # The deploy key can only run deploy.sh on the server (forced command, see deploy/setup.sh).
+  deploy:
+    name: Deploy to server
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_HOST != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    steps:
+      - name: Install SSH key and pinned host key
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Pull and restart on the server
+        run: >
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes
+          tradebot@${{ vars.DEPLOY_HOST }} deploy
