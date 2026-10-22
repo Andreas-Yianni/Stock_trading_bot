@@ -32,6 +32,7 @@ NO_PREVIEW = LinkPreviewOptions(is_disabled=True)
 HELP = """<b>📊 Ανάλυση</b>
 /a SYMBOL [TF]: ανάλυση με chart και δελτίο εντολής (π.χ. <code>/a BTC</code>, <code>/a NVDA 1d</code>)
 /news SYMBOL: ειδήσεις του συμβόλου
+/ai SYMBOL: η γνώμη του AI (Gemini) με ΟΛΕΣ τις ειδήσεις που διάβασε και τι σκέφτηκε για καθεμία
 /macro: σημαντικά γεγονότα της εβδομάδας (CPI, Fed...) και γενικές ειδήσεις
 /scan: γρήγορη σάρωση της watchlist
 
@@ -68,6 +69,7 @@ Timeframes: 1d (προεπιλογή), 4h, 1w. Μετοχές: μόνο 1d."""
 # Το μενού που εμφανίζεται όταν πατάς «/» στο Telegram
 MENU = [
     ("a", "Ανάλυση, π.χ. /a BTC ή /a NVDA 1d"),
+    ("ai", "Γνώμη AI και οι ειδήσεις που διάβασε, π.χ. /ai NVDA"),
     ("trades", "Τα ανοιχτά paper trades μου"),
     ("mystats", "Αποτελέσματα και κεφάλαιο"),
     ("stop", "Υπολογισμός trailing stop, π.χ. /stop AMZN"),
@@ -156,6 +158,24 @@ async def analyze_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await reply(update, report.to_html(a), took_button(a))
     if journal.record(a):
         await reply(update, "<i>📒 Καταγράφηκε στο paper trading ημερολόγιο.</i>")
+
+
+async def ai_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Όλη η «εικόνα» του AI: κάθε είδηση που διάβασε, τι επίδραση είδε και τι θα έκανε."""
+    if not authorized(update):
+        return
+    if not ctx.args:
+        await reply(update, "Γράψε π.χ. <code>/ai NVDA</code>")
+        return
+    symbol, tf = ctx.args[0], (ctx.args[1] if len(ctx.args) > 1 else None)
+    await reply(update, f"⏳ Ρωτάω το AI για {html.escape(symbol.upper())}...")
+    try:
+        a = await asyncio.to_thread(engine.analyze, symbol, tf)
+    except Exception as e:
+        await reply(update, f"❌ {html.escape(str(e))}")
+        return
+    for part in report.split_message(report.ai_html(a)):
+        await reply(update, part)
 
 
 async def news_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -946,6 +966,7 @@ def main():
            .post_init(set_menu).build())
     app.add_handler(CommandHandler(["start", "help"], start))
     app.add_handler(CommandHandler(["a", "analyze"], analyze_cmd))
+    app.add_handler(CommandHandler("ai", ai_cmd))
     app.add_handler(CommandHandler("news", news_cmd))
     app.add_handler(CommandHandler("scan", scan_cmd))
     app.add_handler(CommandHandler("watchlist", watchlist_cmd))

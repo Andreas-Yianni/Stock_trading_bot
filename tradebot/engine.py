@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from . import events, indicators, levels, market, news
+from . import ai, events, indicators, levels, market, news
 from .config import load_config
 
 
@@ -56,6 +56,7 @@ class Analysis:
     warnings: list[str]
     events: list[events.Event] = field(default_factory=list)       # επερχόμενα γεγονότα (CPI, Fed, earnings)
     market_news: list[news.NewsItem] = field(default_factory=list)  # γενικές ειδήσεις αγοράς (μόνο ενημέρωση)
+    ai: "ai.Opinion | None" = None                                   # γνώμη Gemini (αν υπάρχει GEMINI_API_KEY)
 
     @property
     def confidence(self) -> str:
@@ -235,7 +236,28 @@ def trend_filter(bias: str, last: pd.Series, cfg: dict) -> tuple[str, str | None
     return bias, None
 
 
-def analyze(symbol: str, timeframe: str | None = None, with_news: bool = True) -> Analysis:
+def add_ai(a: Analysis, cfg: dict) -> None:
+    """Προσθέτει τη γνώμη του AI ως Factor. Με βάρος 0 (προεπιλογή) είναι μόνο παρατήρηση· με βάρος > 0
+    ξαναϋπολογίζονται σκορ, σήμα και πλάνο (χωρίς backtest, άρα μόνο όταν το ai_log δείξει ότι βοηθάει)."""
+    try:
+        op = ai.opinion(a)
+    except Exception as e:
+        a.warnings.append(f"Η γνώμη AI δεν είναι διαθέσιμη: {e}")
+        return
+    if op is None:
+        return
+    a.ai = op
+    weight = float(ai.settings()["weight"])
+    a.factors.append(Factor("AI (Gemini)", op.score, weight, ai.factor_note(op, weight)))
+    if weight:
+        a.score, bias = combine(a.factors, cfg)
+        a.bias, filtered = trend_filter(bias, a.df.iloc[-1], cfg)
+        if filtered and filtered not in a.warnings:
+            a.warnings.append(filtered)
+        a.plan = _build_plan(a.bias, a.df, a.levels, cfg) if a.bias != "NEUTRAL" else None
+
+
+def analyze(symbol: str, timeframe: str | None = None, with_news: bool = True, with_ai: bool = True) -> Analysis:
     cfg = load_config()
     tf = timeframe or cfg["analysis"]["default_timeframe"]
     asset = market.resolve(symbol)
@@ -275,5 +297,8 @@ def analyze(symbol: str, timeframe: str | None = None, with_news: bool = True) -
             warnings.append("Δεν φορτώθηκε το οικονομικό ημερολόγιο")
         mk = news.market_news()
 
-    return Analysis(asset, tf, float(df["close"].iloc[-1]), df, lv, factors, score, bias, plan, items, fg, warnings,
-                    evs, mk)
+    a = Analysis(asset, tf, float(df["close"].iloc[-1]), df, lv, factors, score, bias, plan, items, fg, warnings,
+                 evs, mk)
+    if with_news and with_ai:
+        add_ai(a, cfg)
+    return a

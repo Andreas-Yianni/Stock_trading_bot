@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from tradebot import backtest, broker, engine, events, journal, market, portfolio, replay, report, selfcheck
+from tradebot import ai, backtest, broker, engine, events, journal, market, portfolio, replay, report, selfcheck
 from tradebot.config import DISCLAIMER, load_config, save_config
 
 st.set_page_config(page_title="Trading Analyst", page_icon="📈", layout="wide")
@@ -87,6 +87,8 @@ with tab_an:
     with left:
         st.subheader("📊 Τι βλέπω")
         for f in a.factors:
+            if a.ai and f.name.startswith("AI"):
+                continue        # δική της ενότητα παρακάτω
             icon = "🟢" if f.score > 0.1 else "🔴" if f.score < -0.1 else "⚪"
             st.markdown(f"{icon} **{f.name}**: {f.note}")
         st.markdown("**Αντιστάσεις:** " + (", ".join(report.fmt_price(l) for l, _ in a.levels["resistance"]) or "-"))
@@ -113,6 +115,26 @@ with tab_an:
         else:
             st.info("Δεν υπάρχει αρκετά καθαρό σήμα. Η αναμονή είναι κι αυτή θέση.")
 
+    if a.ai:
+        op = a.ai
+        st.subheader(f"🤖 Γνώμη AI (Gemini): {op.stance} ({op.score:+.2f})")
+        weight = float(ai.settings()["weight"])
+        st.caption(f"Βεβαιότητα {ai.CONFIDENCE_GR[op.confidence].lower()} · "
+                   f"{'συμφωνεί' if op.agrees_with_rules else 'ΔΕΝ συμφωνεί'} με τους κανόνες · "
+                   + ("δεν αλλάζει το σκορ (μόνο παρατήρηση)" if not weight else f"μετράει με βάρος {weight:g}")
+                   + f" · {op.model}, {op.created_at[:16].replace('T', ' ')} UTC")
+        st.markdown(op.summary)
+        if op.action:
+            st.markdown(f"👉 {op.action}")
+        for s in op.cited:
+            st.markdown(f"{report.EFFECT_ICON[s.effect]} [{s.n}] [{s.title}]({s.link}) · "
+                        f"*{'αγορά, ' if s.market else ''}{s.source}*: {s.why}")
+        if op.risks:
+            st.markdown("⚠️ **Κίνδυνοι:** " + "; ".join(op.risks))
+        with st.expander(f"Όλες οι ειδήσεις που διάβασε το AI ({len(op.seen)})"):
+            for s in op.seen:
+                st.markdown(f"{report.EFFECT_ICON.get(s.effect, '·')} [{s.n}] [{s.title}]({s.link}) · "
+                            f"*{'αγορά, ' if s.market else ''}{s.source}*")
     if a.fear_greed:
         st.markdown(f"😨 **Fear & Greed:** {a.fear_greed['value']}/100 ({a.fear_greed['label']})")
     if a.news:
