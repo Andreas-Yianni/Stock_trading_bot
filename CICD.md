@@ -102,7 +102,7 @@ also logs in with the built-in `GITHUB_TOKEN` (`packages: write`, no extra secre
 `ghcr.io/andreas-yianni/stock_trading_bot:<full commit sha>` and `:latest`. Buildx with GitHub Actions
 layer cache. The package is private (like the repo): the server will need a read-only token to pull.
 Merged to `main` via PR #2; the `main` run pushed the image (CI + docker job green).
-Phase 6 – prepared on branch `ci-cd` (2026-10-22), server not created yet: `deploy/setup.sh` (one-time,
+Phase 6 – prepared (2026-10-22, merged to `main` via PR #3; deploy job correctly skipped), server not created yet: `deploy/setup.sh` (one-time,
 as root: updates + unattended-upgrades, Docker from the official repo with rotated logs, 2 GB swap,
 user `tradebot` uid 1000 in the docker group, `/opt/tradebot`, key-only SSH, ufw with only SSH open),
 `deploy/deploy.sh` (flock, checks `.env`/`config.yaml` exist, `docker compose pull && up -d`, fails if the
