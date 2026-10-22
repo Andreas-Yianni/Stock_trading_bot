@@ -3,6 +3,7 @@ import html
 import re
 from datetime import datetime
 
+from . import ai
 from . import events as ev
 from . import portfolio
 from .backtest import stats
@@ -67,6 +68,74 @@ def macro_html(events: list, items: list) -> str:
                  "Γύρω από αυτά η τιμή κινείται συχνά απότομα και προς τις δύο κατευθύνσεις.</i>")
     lines.append(f"\n<i>{html.escape(DISCLAIMER)}</i>")
     return "\n".join(lines)
+
+
+EFFECT_ICON = {"+": "🟢", "-": "🔴", "0": "⚪"}
+
+
+def ai_lines(a: Analysis, full: bool = False, title_max: int = 120) -> list[str]:
+    """Η γνώμη του AI: τι λέει, τι θα έκανε και ΠΟΙΕΣ ειδήσεις το επηρέασαν (με σύνδεσμο).
+    full=True (/ai): όλες οι ειδήσεις που είδε, και όσες δεν έπαιξαν ρόλο."""
+    op = a.ai
+    if not op:
+        return []
+    e = html.escape
+    weight = float(ai.settings()["weight"])
+    lines = ["", f"<b>🤖 Γνώμη AI (Gemini): {op.stance}</b> ({op.score:+.2f}) · "
+                 f"βεβαιότητα {ai.CONFIDENCE_GR[op.confidence]}",
+             e(op.summary)]
+    if op.action:
+        lines.append(f"👉 {e(op.action)}")
+    cited = op.cited if full else op.cited[:3]
+    if cited:
+        lines.append("<i>Ειδήσεις που μέτρησαν:</i>")
+    for s in cited:
+        tag = "αγορά, " if s.market else ""
+        why = f": {e(s.why)}" if s.why else ""
+        lines.append(f'{EFFECT_ICON[s.effect]} [{s.n}] <a href="{e(s.link)}">{e(s.title)}</a> '
+                     f'<i>({tag}{e(s.source)})</i>{why}')
+    rest = [s for s in op.seen if s.effect is None]
+    if full and rest:
+        lines.append("<i>Διάβασε επίσης (δεν έπαιξαν ρόλο):</i>")
+        lines += [f"· [{s.n}] {e(s.title[:title_max])}{'…' if len(s.title) > title_max else ''}" for s in rest]
+    if op.risks:
+        lines.append("⚠️ <i>Κίνδυνοι:</i>")
+        lines += [f"• {e(r)}" for r in op.risks]
+    n_sym = sum(not s.market for s in op.seen)
+    tail = [f"είδε {n_sym} ειδήσεις συμβόλου + {len(op.seen) - n_sym} αγοράς"]
+    if not full:
+        tail.append(f"/ai {e(a.asset.symbol)} για όλες")
+    tail.append("δεν αλλάζει το σκορ (μόνο παρατήρηση)" if not weight else f"μετράει στο σκορ με βάρος {weight:g}")
+    lines.append("<i>" + " · ".join(tail) + "</i>")
+    return lines
+
+
+def ai_html(a: Analysis) -> str:
+    """Μήνυμα /ai: όλη η «εικόνα» του AI για ένα σύμβολο."""
+    head = [f"<b>{html.escape(a.asset.symbol)}</b> · {a.timeframe} · Τιμή {fmt_price(a.price)}",
+            f"Κανόνες: σκορ {a.score:+.0f}/100 → {bias_text(a)}"]
+    if not a.ai:
+        why = [w for w in a.warnings if "AI" in w]
+        msg = why[0] if why else "Δεν υπάρχει γνώμη AI: λείπει το GEMINI_API_KEY ή είναι κλειστό (ai.enabled)."
+        return "\n".join(head + ["", "⚠️ " + html.escape(msg)])
+    op = a.ai
+    when = op.created_at.replace("T", " ")[:16] + " UTC" + (" (από cache)" if op.cached else "")
+    agree = "συμφωνεί με τους κανόνες" if op.agrees_with_rules else "ΔΕΝ συμφωνεί με τους κανόνες"
+    foot = ["", f"<i>{agree} · {html.escape(op.model)} · {when}</i>", f"<i>{html.escape(DISCLAIMER)}</i>"]
+    return "\n".join(head + ai_lines(a, full=True, title_max=70) + foot)
+
+
+def split_message(text: str, limit: int = 4000) -> list[str]:
+    """Σπάει ένα μεγάλο HTML μήνυμα σε κομμάτια ≤ limit, μόνο σε αλλαγές γραμμής (κάθε γραμμή κλείνει τα
+    tags της), για το όριο των 4096 χαρακτήρων του Telegram."""
+    parts, cur = [], ""
+    for line in text.split("\n"):
+        if cur and len(cur) + 1 + len(line) > limit:
+            parts.append(cur)
+            cur = line
+        else:
+            cur = f"{cur}\n{line}" if cur else line
+    return parts + [cur] if cur else parts
 
 
 def ticket_lines(a: Analysis) -> list[str]:
@@ -137,6 +206,8 @@ def to_html(a: Analysis, show_news: int = 5) -> str:
         "<b>📊 Τι βλέπω:</b>",
     ]
     for f in a.factors:
+        if a.ai and f.name.startswith("AI"):
+            continue            # η γνώμη AI έχει δική της ενότητα παρακάτω
         icon = "🟢" if f.score > 0.1 else "🔴" if f.score < -0.1 else "⚪"
         lines.append(f"{icon} <i>{e(f.name)}</i>: {e(f.note)}")
 
@@ -145,6 +216,8 @@ def to_html(a: Analysis, show_news: int = 5) -> str:
         lines.append("\n<b>Αντιστάσεις:</b> " + ", ".join(fmt_price(l) for l, _ in lv["resistance"]))
     if lv["support"]:
         lines.append("<b>Στηρίξεις:</b> " + ", ".join(fmt_price(l) for l, _ in lv["support"]))
+
+    lines += ai_lines(a)
 
     p = a.plan
     if p:
@@ -188,7 +261,13 @@ def to_html(a: Analysis, show_news: int = 5) -> str:
     for w in a.warnings:
         lines.append(f"\n⚠️ {e(w)}")
     lines.append(f"\n<i>{e(DISCLAIMER)}</i>")
-    return "\n".join(lines)
+    text = "\n".join(lines)
+    if len(text) > TELEGRAM_MAX and show_news:
+        return to_html(a, show_news=0)   # Telegram: έως 4096 χαρακτήρες· οι ειδήσεις του AI μένουν
+    return text
+
+
+TELEGRAM_MAX = 4000
 
 
 def html_to_text(s: str) -> str:

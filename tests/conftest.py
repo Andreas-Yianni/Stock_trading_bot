@@ -3,7 +3,8 @@
 Every test runs isolated from the real bot state:
 - config.yaml -> a temp copy with fixed test values (tradebot.config.ROOT points to tmp_path)
 - data/journal.db, broker state/equity files -> temp files
-- Alpaca keys -> fake paper-looking values (never the ones from .env)
+- Alpaca keys -> fake paper-looking values (never the ones from .env); no Gemini key
+- AI cache/log files -> temp files
 - network -> blocked: any socket connection raises, so a missing mock fails loudly
 """
 import socket
@@ -16,7 +17,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tradebot import broker, config, journal, portfolio  # noqa: E402
+from tradebot import ai, broker, config, journal, portfolio  # noqa: E402
 
 TEST_CONFIG = {
     "account": {"currency": "USD", "balance": 100000.0, "risk_per_trade_pct": 1.0, "max_position_pct": 25},
@@ -46,6 +47,10 @@ def isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(broker, "EQUITY_FILE", tmp_path / "broker_equity.json")
     monkeypatch.setenv("ALPACA_API_KEY", "PKTESTKEY")
     monkeypatch.setenv("ALPACA_SECRET_KEY", "test-secret")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setattr(ai, "CACHE_FILE", tmp_path / "ai_cache.json")
+    monkeypatch.setattr(ai, "LOG_FILE", tmp_path / "ai_log.jsonl")
+    monkeypatch.setattr(ai, "MIN_GAP", 0.0)
     monkeypatch.setattr(socket.socket, "connect", _no_network)
     monkeypatch.setattr(socket, "create_connection", _no_network)
     return tmp_path
