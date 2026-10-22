@@ -6,7 +6,19 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 exec 9>/tmp/tradebot-deploy.lock
-flock 9                                   # one deploy at a time
+flock 9                                   # one deploy at a time (watchdog.sh waits too)
+
+# Telegram message with the result (notify.sh uses the bot's own token from .env).
+on_exit() {
+    local code=$?
+    [ -x ./notify.sh ] || return
+    if [ "$code" -ne 0 ]; then
+        ./notify.sh "❌ Το deploy της νέας έκδοσης απέτυχε. Το bot μπορεί να τρέχει την προηγούμενη έκδοση ή να είναι σταματημένο. Πες το στο Claude."
+    else
+        ./notify.sh "✅ Νέα έκδοση του bot στον server (${REV:-?}). Όλα κανονικά."
+    fi
+}
+trap on_exit EXIT
 
 for f in .env config.yaml docker-compose.yml; do
     # A missing bind-mounted file would be created by docker as a DIRECTORY.
@@ -27,4 +39,6 @@ if ! docker compose ps --status running --services | grep -qx bot; then
 fi
 
 docker image prune -f >/dev/null           # drop old image versions (disk is small)
-echo "Deploy OK: $(docker compose images bot --format '{{.Repository}}:{{.Tag}} {{.ID}}' 2>/dev/null || true)"
+REV=$(docker inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$(docker compose ps -q bot)" \
+      2>/dev/null | cut -c1-7)
+echo "Deploy OK: ${REV:-unknown revision}"

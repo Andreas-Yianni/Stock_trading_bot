@@ -30,7 +30,7 @@ ssh-keygen -t ed25519 -f $HOME\.ssh\tradebot_deploy -N '""' -C github-deploy
 
 ```powershell
 mkdir $env:TEMP\tb-setup -Force
-copy deploy\setup.sh, deploy\deploy.sh, docker-compose.yml, $HOME\.ssh\tradebot_deploy.pub $env:TEMP\tb-setup\
+copy deploy\setup.sh, deploy\deploy.sh, deploy\notify.sh, deploy\watchdog.sh, docker-compose.yml, $HOME\.ssh\tradebot_deploy.pub $env:TEMP\tb-setup\
 ren $env:TEMP\tb-setup\tradebot_deploy.pub deploy_key.pub
 scp -i $HOME\.ssh\tradebot_vps -r $env:TEMP\tb-setup root@SERVER:/root/tradebot-setup
 ssh -i $HOME\.ssh\tradebot_vps root@SERVER bash /root/tradebot-setup/setup.sh
@@ -38,7 +38,10 @@ ssh -i $HOME\.ssh\tradebot_vps root@SERVER bash /root/tradebot-setup/setup.sh
 
 `setup.sh` installs updates + automatic security updates, Docker (official repo, rotated logs),
 2 GB swap, user `tradebot`, the keys, `/opt/tradebot`, key-only SSH and the firewall.
-It can be run again safely.
+It can be run again safely. It also installs the **watchdog** (cron, every 5 min): if the bot container is
+stopped or Docker marks it *unhealthy* (the bot rewrites `data/heartbeat` every minute; older than 5 min = stuck),
+`watchdog.sh` restarts it and sends a Telegram alert (`notify.sh`, at most once an hour). `deploy.sh` also
+reports every deploy on Telegram (✅ new version / ❌ failed), using the bot's own token from `.env`.
 
 ## 3. Bot state: `.env`, `config.yaml`, `data/` (once)
 
@@ -95,7 +98,8 @@ docker compose restart bot
 docker compose exec bot python cli.py AAPL 1d --no-news
 ```
 
-- A change to `docker-compose.yml` is not deployed automatically: copy it with
+- Logs of the watchdog: `data/watchdog.log`. Health: `docker inspect -f '{{.State.Health.Status}}' tradebot-bot-1`.
+- A change to `docker-compose.yml` (or `notify.sh` / `watchdog.sh`) is not deployed automatically: copy it with
   `scp -i ~/.ssh/tradebot_vps docker-compose.yml tradebot@SERVER:/opt/tradebot/`, then run `deploy.sh`.
 - `config.yaml` on the server is the live one (the bot rewrites it); the repo copy is only the default.
 - Rollback: on the server, `docker pull ghcr.io/andreas-yianni/stock_trading_bot:<older sha>`,

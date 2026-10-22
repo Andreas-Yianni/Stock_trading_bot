@@ -75,10 +75,16 @@ chmod 600 "$AUTH"
 echo "== app directory $APP_DIR"
 install -d -m 755 -o "$APP_USER" -g "$APP_USER" "$APP_DIR"
 install -d -m 755 -o "$APP_UID" -g "$APP_UID" "$APP_DIR/data"
-for f in docker-compose.yml deploy.sh; do
+for f in docker-compose.yml deploy.sh notify.sh watchdog.sh; do
     [ -f "$SRC/$f" ] && install -m 644 -o "$APP_USER" -g "$APP_USER" "$SRC/$f" "$APP_DIR/$f"
 done
-[ -f "$APP_DIR/deploy.sh" ] && chmod 755 "$APP_DIR/deploy.sh"
+for f in deploy.sh notify.sh watchdog.sh; do
+    [ -f "$APP_DIR/$f" ] && chmod 755 "$APP_DIR/$f"
+done
+
+echo "== watchdog: restart a stuck/stopped bot every 5 min (+ Telegram alert)"
+echo "*/5 * * * * $APP_USER $APP_DIR/watchdog.sh" > /etc/cron.d/tradebot-watchdog
+chmod 644 /etc/cron.d/tradebot-watchdog
 
 echo "== ssh: keys only"
 cat > /etc/ssh/sshd_config.d/10-tradebot.conf <<'EOF'
