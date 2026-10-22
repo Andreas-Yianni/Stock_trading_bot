@@ -1,6 +1,6 @@
 # Deploying to the Hetzner server
 
-Target: Hetzner Cloud, cheapest x86 (CX), Ubuntu 24.04, created with the SSH key `~/.ssh/tradebot_vps`.
+Target: Hetzner Cloud, Arm64 Ampere (CAX, 4 GB; the x86 CX23 was sold out), Ubuntu 24.04, created with the SSH key `~/.ssh/tradebot_vps`.
 After this one-time setup, every push to `main` that passes CI is deployed automatically:
 
 ```
