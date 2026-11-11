@@ -1,87 +1,105 @@
-# 📈 Trading Analyst Bot
+# Trading Analyst Bot
 
 [![CI](https://github.com/Andreas-Yianni/Stock_trading_bot/actions/workflows/ci.yml/badge.svg)](https://github.com/Andreas-Yianni/Stock_trading_bot/actions/workflows/ci.yml)
 
-Αναλύει μετοχές και crypto (τεχνική ανάλυση + ειδήσεις) και προτείνει **ενδεικτικά** σημεία εισόδου, stop loss, take profit και μέγεθος θέσης. **Δεν κάνει trades.**
+A Python bot that analyses US stocks and crypto with technical indicators and news sentiment, suggests entry, stop-loss and position size, and paper-trades the signals automatically through the Alpaca API. It runs 24/7 in Docker on a cloud server and every merge to `main` is tested and deployed automatically.
 
-> ⚠️ Καμία ανάλυση δεν προβλέπει την αγορά με σιγουριά. Χρησιμοποίησέ το για paper trading πρώτα.
+> **Paper trading only.** This is a learning and portfolio project. No analysis predicts the market reliably, and the bot never uses real money.
 
-## Εγκατάσταση (μία φορά)
+## Features
 
-Άνοιξε PowerShell μέσα στον φάκελο `Trading bot`:
+- **Analysis engine** – trend and momentum indicators (EMA, RSI, ATR), support/resistance levels and news sentiment, combined into a score from -100 to +100 with a trade plan (entry, stop-loss, trailing stop, position size based on account risk).
+- **Backtesting** – replays a strategy over years of history per symbol or across the whole watchlist, with fees and portfolio-level stats.
+- **Automated paper trading** – a daily scan of the top 100 US stocks places paper orders on Alpaca, with safety limits (max positions, max new trades per day, max order size, daily loss limit).
+- **AI second opinion (optional)** – the Google Gemini API reviews the same data and returns a structured JSON opinion. It is logged and compared with real outcomes; it does not change signals by default.
+- **Telegram bot** – run analyses, scans and backtests from your phone (`/scan`, `/news`, `/backtest`, `/trades`, `/stats` and more) and get alerts on new signals.
+- **Streamlit dashboard** – charts, analysis, news, watchlist scan and trade journal in the browser.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
-copy .env.example .env
-```
+## Tech stack
 
-## 1) Γρήγορη ανάλυση από το terminal
-
-```powershell
-.\.venv\Scripts\python cli.py BTC          # crypto, timeframe από το config (4h)
-.\.venv\Scripts\python cli.py AAPL 1d      # μετοχή, ημερήσιο
-.\.venv\Scripts\python cli.py --review     # αποτελέσματα paper trading
-.\.venv\Scripts\python cli.py BTC 4h --backtest            # πώς θα είχε πάει η στρατηγική τα τελευταία 3 χρόνια
-.\.venv\Scripts\python cli.py AAPL 1d --backtest --days 1000
-.\.venv\Scripts\python cli.py all 4h --backtest            # backtest σε όλη τη watchlist
-```
-
-## 2) Dashboard (στον browser)
-
-```powershell
-.\.venv\Scripts\streamlit run dashboard.py
-```
-Ανοίγει στο http://localhost:8501 με chart, ανάλυση, ειδήσεις, σάρωση watchlist και ημερολόγιο.
-
-## 3) Telegram bot (στο κινητό)
-
-1. Στο Telegram βρες τον **@BotFather**, στείλε `/newbot` και ακολούθησε τα βήματα. Θα σου δώσει ένα **token**.
-2. Βάλε το token στο `.env`: `TELEGRAM_BOT_TOKEN=123456:ABC...`
-3. Τρέξε: `.\.venv\Scripts\python telegram_bot.py`
-4. Στείλε `/start` στο bot σου. Θα σου απαντήσει με το **chat id** σου.
-5. Βάλε το chat id στο `.env` (`TELEGRAM_CHAT_ID=...`) και ξανατρέξε το bot. Από εδώ και πέρα μόνο εσύ μπορείς να το χρησιμοποιείς και θα σου στέλνει **ειδοποιήσεις** όταν κάποιο σύμβολο της watchlist βγάλει νέο σήμα.
-
-Εντολές: `/a BTC`, `/a TSLA 1d`, `/news ETH`, `/scan`, `/watch SOL`, `/unwatch SOL`, `/balance 2000`, `/risk 1`, `/stats`, `/backtest BTC 4h`, `/backtest all`, `/macro`, `/trades`, `/close`, `/cancel`, `/mystats`
-
-> Το bot δουλεύει μόνο όσο είναι ανοιχτό το παράθυρο και ο υπολογιστής.
-
-**Πιο εύκολα:** διπλό κλικ στο `start_bot.bat` (Telegram bot) ή στο `start_dashboard.bat` (dashboard).
-
-## 4) Με Docker (εναλλακτικά, π.χ. σε server)
-
-Ένα image για δύο services (`bot` και `dashboard`). Τα `.env`, `data/` και `config.yaml` δεν μπαίνουν στο image: διαβάζονται από τον φάκελο.
-
-```powershell
-docker compose up -d --build     # φτιάχνει το image και ξεκινάει bot + dashboard
-docker compose logs -f bot       # τι κάνει το bot
-docker compose down              # σταμάτημα
-```
-
-Dashboard: http://localhost:8501 (μόνο από τον ίδιο υπολογιστή). **Μόνο ένα bot κάθε φορά**: όχι Docker και `start_bot.bat` μαζί (ίδιο Telegram token, διπλά scans/trades).
-
-## Ρυθμίσεις: `config.yaml`
-
-- `account.balance`: το κεφάλαιό σου
-- `account.risk_per_trade_pct`: % ρίσκο ανά trade (προτείνεται 0.5-1%)
-- `watchlist`: τα σύμβολα που παρακολουθεί
-- `alerts.scan_every_minutes`: κάθε πόσο σαρώνει
-- `backtest.fee_pct`: προμήθεια ανά συναλλαγή που αφαιρείται στο backtest
-
-## Πώς να διαβάζεις την ανάλυση
-
-| Όρος | Τι σημαίνει |
+| Area | Tools |
 |---|---|
-| **LONG** | Αγοράζεις, περιμένοντας άνοδο |
-| **SHORT** | Ποντάρεις σε πτώση. Για αρχάριους: απλά **μην αγοράσεις** |
-| **Stop loss (SL)** | Η τιμή όπου κλείνεις με μικρή ζημιά. **Πάντα** να το βάζεις |
-| **Trailing stop** | Το stop που ανεβαίνει μαζί με την τιμή (6 ATR κάτω από το υψηλότερο σημείο) και δεν κατεβαίνει ποτέ. Η προεπιλογή (`analysis.exit_mode: trend`): χωρίς take profit, η θέση κλείνει μόνο στο stop |
-| **TP1 / TP2** | Στόχοι κέρδους των παλιών κανόνων (`exit_mode: fixed`). Στο TP1 κλείνεις το μισό και πας το SL στην είσοδο |
-| **R:R 1:2** | Ρισκάρεις 1 για να κερδίσεις 2 |
-| **Σκορ** | -100 (πολύ bearish) έως +100 (πολύ bullish). Κάτω από ±30 = καμία θέση |
-| **RSI** | <30 υπερπουλημένο. Πάνω από 70 σημαίνει δυνατό momentum (στο backtest η τιμή συνέχιζε να ανεβαίνει) |
-| **EMA200** | Πάνω από αυτόν = μακροπρόθεσμα ανοδική τάση |
+| Language | Python 3.14 |
+| Data & analysis | pandas, NumPy, yfinance, ccxt, VADER sentiment |
+| Integrations | Alpaca API (paper trading), Telegram Bot API, Google Gemini API |
+| UI | Telegram, Streamlit, Plotly, mplfinance |
+| Quality | pytest (95 tests, network fully mocked), ruff, coverage |
+| DevOps | Docker, Docker Compose, GitHub Actions, GitHub Container Registry, Dependabot |
+| Hosting | Hetzner Cloud VPS (Ubuntu 24.04, Arm64) |
 
-## Επόμενα βήματα
+## Architecture
 
-Δες το [PLAN.md](PLAN.md) (AI ανάλυση με Claude, X/Twitter, backtesting κ.λπ.).
+```
+tradebot/
+  market.py, cache.py        market data (stocks via yfinance, crypto via ccxt) with caching
+  indicators.py, levels.py   technical indicators and support/resistance
+  news.py, events.py         news feeds, sentiment, upcoming earnings/macro events
+  engine.py                  combines all factors into a score and a trade plan
+  ai.py                      optional Gemini opinion (JSON, cached, logged)
+  backtest.py, strategies.py historical simulation and strategy comparison
+  autoscan.py, broker.py     daily scan and Alpaca paper orders with risk limits
+  journal.py, portfolio.py   trade journal and performance stats
+telegram_bot.py              Telegram interface and scheduled jobs
+dashboard.py                 Streamlit dashboard
+cli.py                       command-line analysis and backtests
+```
+
+## CI/CD pipeline
+
+```mermaid
+flowchart LR
+    A[Push / Pull request] --> B[Lint: ruff]
+    B --> C[Tests: pytest + coverage]
+    C --> D[Build multi-arch Docker image]
+    D -->|main only| E[Push to ghcr.io]
+    E --> F[SSH deploy to Hetzner VPS]
+    F --> G[docker compose pull && up -d]
+```
+
+- Pull requests run lint, tests and a Docker build; `main` is protected and needs a green CI.
+- On `main`, the image is built for amd64 and arm64, pushed to GitHub Container Registry and deployed over SSH with a restricted deploy key that can only run `deploy.sh`.
+- On the server the bot writes a heartbeat every minute; a Docker healthcheck and a watchdog restart it and send a Telegram alert if it gets stuck.
+- The server firewall only allows SSH; the dashboard is reached through an SSH tunnel.
+
+Full server setup: [`deploy/README.md`](deploy/README.md).
+
+## Run locally
+
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env               # add your Telegram, Alpaca (paper) and optional Gemini keys
+```
+
+```bash
+python cli.py AAPL 1d              # analyse one symbol
+python cli.py AAPL 1d --backtest   # backtest it
+streamlit run dashboard.py         # dashboard on http://localhost:8501
+python telegram_bot.py             # Telegram bot
+```
+
+Or with Docker:
+
+```bash
+docker compose up -d --build       # bot + dashboard
+docker compose logs -f bot
+```
+
+Run the tests:
+
+```bash
+pip install -r requirements-dev.txt
+pytest --cov
+```
+
+Settings such as balance, risk per trade, watchlist and broker limits live in `config.yaml`. A full list of Telegram commands (in Greek) is in [`ΟΔΗΓΟΣ_ΕΝΤΟΛΩΝ.md`](ΟΔΗΓΟΣ_ΕΝΤΟΛΩΝ.md).
+
+## How it was built
+
+I built this project with Claude Code as a pair programmer. I set the direction, reviewed and tested each change, and worked in feature branches merged through pull requests with CI checks. Strategy ideas that failed in backtests were documented and rejected rather than shipped (see `research/`).
+
+## Author
+
+Andreas Yianni – Computer Engineering & Informatics student, Cyprus University of Technology
+[GitHub](https://github.com/Andreas-Yianni) · [LinkedIn](https://www.linkedin.com/in/andreas-yianni-38503320a/)
