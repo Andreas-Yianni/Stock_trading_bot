@@ -121,3 +121,13 @@ Verified on the server: native arm64 build, 94 tests pass, `cli.py AAPL 1d` (Yah
 starts, Alpaca paper account reachable, dashboard health 200, password SSH refused, deploy key runs only
 `deploy.sh`. State copied (`.env`, `config.yaml`, `data/` without research; CRLF stripped). Local bot off.
 GitHub: variable `DEPLOY_HOST`, secrets `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` set; deploy also on "Run workflow" on main.
+Phase 6 deploy verified end to end (2026-10-22): merge to main → CI → image → SSH → deploy.sh, bot back up.
+Phase 7 – done (2026-10-22): repo made **public** (branch protection is not available for private repos on
+GitHub Free; full history scanned first: no keys/tokens/.env/data ever committed). `main` protected: PR required
+(0 approvals, solo), green `Lint & tests` + `Docker image`, branch up to date, enforced for admins, no force
+push/delete. `.github/dependabot.yml` (actions weekly, pip monthly, grouped; `requirements.lock` stays a manual
+pip freeze). Bot writes `data/heartbeat` every minute; compose healthcheck = younger than 5 min.
+`deploy/watchdog.sh` (cron `/etc/cron.d/tradebot-watchdog`, every 5 min) restarts a stopped/unhealthy bot and
+alerts on Telegram (max once/hour); `deploy/notify.sh` + `deploy.sh` send ✅/❌ for every deploy using the bot's own
+token from `.env`. Tested on the server: healthy, watchdog restarted a stopped bot in <15 s.
+Next: Phase 8 (README showcase).
