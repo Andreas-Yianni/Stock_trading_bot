@@ -22,9 +22,12 @@ def spy_ok(pres, n=200):
 
 
 def simulate(T, pres, start, end, balance=100_000.0, risk_pct=1.0, max_pos_pct=25.0,
-             max_open=None, priority="score", ascending=False, market=None, park=None, park_fee_pct=0.0):
+             max_open=None, priority="score", ascending=False, market=None, park=None, park_fee_pct=0.0,
+             size_on="plan", max_gap_r=None):
     """park="SPY": idle cash is held in that ETF (bought at each day's close, sold as needed to fund
-    entries), so the account stays ~fully invested. park_fee_pct = cost per SPY buy/sell."""
+    entries), so the account stays ~fully invested. park_fee_pct = cost per SPY buy/sell.
+    size_on="fill": qty from the actual fill (next open) - SL instead of the plan's entry - SL.
+    max_gap_r: skip the trade if it opens more than this many plan-R above the plan entry."""
     start, end = pd.Timestamp(start), pd.Timestamp(end)
     T = T.copy()
     ent, ex, d1, dsig = [], [], [], []
@@ -63,7 +66,11 @@ def simulate(T, pres, start, end, balance=100_000.0, risk_pct=1.0, max_pos_pct=2
                 if (max_open is not None and len(pos) >= max_open) or any(p["sym"] == t.sym for p in pos):
                     skipped += 1
                     continue
-                qty = eq_prev * risk_pct / 100 / t.risk
+                if max_gap_r is not None and (t.entry - t.plan_entry) / t.risk > max_gap_r:
+                    skipped += 1
+                    continue
+                rps = max(t.entry - t.sl, 1e-9) if size_on == "fill" else t.risk
+                qty = eq_prev * risk_pct / 100 / rps
                 cap = eq_prev * max_pos_pct / 100
                 if qty * t.entry > cap:
                     qty = cap / t.entry
