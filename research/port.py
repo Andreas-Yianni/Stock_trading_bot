@@ -22,7 +22,12 @@ def spy_ok(pres, n=200):
 
 
 def simulate(T, pres, start, end, balance=100_000.0, risk_pct=1.0, max_pos_pct=25.0,
-             max_open=None, priority="score", ascending=False, market=None):
+             max_open=None, priority="score", ascending=False, market=None, park=None, park_fee_pct=0.0,
+             size_on="plan", max_gap_r=None):
+    """park="SPY": idle cash is held in that ETF (bought at each day's close, sold as needed to fund
+    entries), so the account stays ~fully invested. park_fee_pct = cost per SPY buy/sell.
+    size_on="fill": qty from the actual fill (next open) - SL instead of the plan's entry - SL.
+    max_gap_r: skip the trade if it opens more than this many plan-R above the plan entry."""
     start, end = pd.Timestamp(start), pd.Timestamp(end)
     T = T.copy()
     ent, ex, d1, dsig = [], [], [], []
@@ -43,26 +48,43 @@ def simulate(T, pres, start, end, balance=100_000.0, risk_pct=1.0, max_pos_pct=2
         dates, c = closes(pres[s])
         cl[s] = pd.Series(c, index=dates)
     cash = balance
+    park_u = 0.0
+    park_px = None
+    if park is not None:
+        pd_, pc_ = closes(pres[park])
+        park_px = pd.Series(pc_, index=pd_)
     pos = []
     eq_prev = balance
     curve, expo = [], []
     taken = skipped = 0
     for d in cal:
+        ppx = float(park_px.get(d, np.nan)) if park is not None else np.nan
+        if ppx != ppx and park is not None:
+            ppx = float(park_px[park_px.index <= d].iloc[-1])
         if d in by_day:
             for t in by_day[d].itertuples():
                 if (max_open is not None and len(pos) >= max_open) or any(p["sym"] == t.sym for p in pos):
                     skipped += 1
                     continue
-                qty = eq_prev * risk_pct / 100 / t.risk
+                if max_gap_r is not None and (t.entry - t.plan_entry) / t.risk > max_gap_r:
+                    skipped += 1
+                    continue
+                rps = max(t.entry - t.sl, 1e-9) if size_on == "fill" else t.risk
+                qty = eq_prev * risk_pct / 100 / rps
                 cap = eq_prev * max_pos_pct / 100
                 if qty * t.entry > cap:
                     qty = cap / t.entry
-                if qty * t.entry > cash:
-                    if cash < 0.5 * qty * t.entry:
+                avail = cash + (park_u * ppx * (1 - park_fee_pct / 100) if park is not None else 0.0)
+                if qty * t.entry > avail:
+                    if avail < 0.5 * qty * t.entry:
                         skipped += 1
                         continue
-                    qty = cash / t.entry
+                    qty = avail / t.entry
                 cash -= qty * t.entry
+                if cash < 0 and park is not None:
+                    sell = min(park_u, -cash / (ppx * (1 - park_fee_pct / 100)))
+                    park_u -= sell
+                    cash += sell * ppx * (1 - park_fee_pct / 100)
                 taken += 1
                 pos.append({"sym": t.sym, "qty": qty, "fill": t.entry, "part": t.part, "p1": t.p1, "d1": t.d1,
                             "d_out": t.d_out, "pnl": t.r * qty * t.risk, "done1": False, "last": t.entry})
@@ -83,7 +105,10 @@ def simulate(T, pres, start, end, balance=100_000.0, risk_pct=1.0, max_pos_pct=2
             mv += p["qty"] * rem * p["last"]
             keep.append(p)
         pos = keep
-        eq_prev = cash + mv
+        if park is not None and cash > 0:
+            park_u += cash * (1 - park_fee_pct / 100) / ppx
+            cash = 0.0
+        eq_prev = cash + mv + (park_u * ppx if park is not None else 0.0)
         curve.append(eq_prev)
         expo.append(mv / eq_prev if eq_prev > 0 else 0)
     s = pd.Series(curve, index=cal)
